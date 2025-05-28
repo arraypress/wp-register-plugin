@@ -1,0 +1,63 @@
+{
+  "name": "arraypress/wp-register-plugin",
+  "version": "1.0.0",
+  "description": "A universal WordPress plugin registration system with flexible requirements checking and conflict detection. Simplifies plugin development with smart defaults for EDD, WooCommerce, Elementor, and custom ecosystems.",
+  "type": "library",
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://github.com/arraypress/wp-register-plugin/",
+  "authors": [
+    {
+      "name": "ArrayPress Team",
+      "homepage": "https://arraypress.com/"
+    }
+  ],
+  "require": {
+    "php": ">=7.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "ArrayPress\\WP\\Register\\": "src/"
+    },
+    "files": [
+      "src/Utilities.php"
+    ]
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true,
+    "preferred-install": "dist"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "support": {
+    "issues": "https://github.com/arraypress/wp-register-plugin/issues",
+    "source": "https://github.com/arraypress/wp-register-plugin"
+  },
+  "keywords": [
+    "wordpress",
+    "wp-plugin",
+    "plugin-registration",
+    "requirements-checker",
+    "conflict-detection",
+    "edd",
+    "easy-digital-downloads",
+    "woocommerce",
+    "elementor",
+    "plugin-framework",
+    "plugin-loader",
+    "dependency-management",
+    "version-checking",
+    "plugin-bootstrap",
+    "wordpress-development",
+    "plugin-development",
+    "auto-deactivate",
+    "plugin-conflicts",
+    "php-version-check",
+    "wordpress-version-check",
+    "plugin-ecosystem",
+    "extension-development",
+    "addon-development",
+    "pro-plugin",
+    "free-plugin-conflict"
+  ]
+}

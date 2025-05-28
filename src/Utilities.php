@@ -85,10 +85,10 @@ if ( ! function_exists( 'register_pro_plugin' ) ):
 	/**
 	 * Register a Pro plugin that conflicts with its free version
 	 *
-	 * @param string   $file        Plugin file (__FILE__)
-	 * @param callable $bootstrap   Bootstrap function
-	 * @param string   $free_plugin Free version plugin path
-	 * @param array    $config      Additional configuration
+	 * @param string   $file         Plugin file (__FILE__)
+	 * @param callable $bootstrap    Bootstrap function
+	 * @param string   $free_plugin  Free version plugin path
+	 * @param array    $config       Additional configuration
 	 *
 	 * @return void
 	 */
@@ -96,10 +96,13 @@ if ( ! function_exists( 'register_pro_plugin' ) ):
 		$defaults = [
 			'requirements' => [
 				'php' => '7.4',
-				'wp'  => '6.8.1',
+				'wp' => '6.0',
 			],
-			'conflicts'    => [
+			'conflicts' => [
 				'free-version' => $free_plugin,
+			],
+			'plugin_links' => [
+				'support' => 'https://support.example.com', // Default pro support
 			],
 		];
 

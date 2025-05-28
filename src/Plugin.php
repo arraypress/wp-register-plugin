@@ -14,6 +14,7 @@
 namespace ArrayPress\WP\Register;
 
 use InvalidArgumentException;
+use WP_Screen;
 
 /**
  * Plugin Class
@@ -90,6 +91,9 @@ class Plugin {
 			'support_url'      => '',
 			'error_message'    => __( 'This plugin is not fully active.', 'wp-register-plugin' ),
 			'css_class_prefix' => 'wp-register-plugin',
+			'plugin_links'     => [],
+			'plugin_meta'      => [],
+			'notices'          => [],
 		] );
 	}
 
@@ -134,6 +138,9 @@ class Plugin {
 		if ( ! empty( $this->config['deactivation'] ) && is_callable( $this->config['deactivation'] ) ) {
 			register_deactivation_hook( $this->plugin_file, $this->config['deactivation'] );
 		}
+
+		// Set up plugin links and notices for successful load
+		$this->setup_plugin_enhancements();
 	}
 
 	/**
@@ -143,7 +150,7 @@ class Plugin {
 	 */
 	private function quit(): void {
 		add_action( 'admin_head', [ $this, 'admin_head' ] );
-		add_filter( "plugin_action_links_{$this->plugin_basename}", [ $this, 'plugin_action_links' ] );
+		add_filter( "plugin_action_links_{$this->plugin_basename}", [ $this, 'error_plugin_action_links' ] );
 		add_action( "after_plugin_row_{$this->plugin_basename}", [ $this, 'plugin_row_notice' ] );
 	}
 
@@ -238,14 +245,14 @@ class Plugin {
 	}
 
 	/**
-	 * WordPress plugin action links filter - Add requirements/support links.
+	 * WordPress plugin action links filter - Add requirements/support links for errors.
 	 *
 	 * @param array $links Existing plugin action links
 	 *
 	 * @return array Modified plugin action links
 	 * @since 1.0.0
 	 */
-	public function plugin_action_links( array $links ): array {
+	public function error_plugin_action_links( array $links ): array {
 		if ( ! empty( $this->config['requirements_url'] ) ) {
 			$requirements_link = sprintf(
 				'<a href="%s" target="_blank" aria-label="%s">%s</a>',
@@ -269,6 +276,132 @@ class Plugin {
 		}
 
 		return $links;
+	}
+
+	/**
+	 * Set up plugin enhancements for successful loads.
+	 *
+	 * @since 1.0.0
+	 */
+	private function setup_plugin_enhancements(): void {
+		// Plugin action links
+		if ( ! empty( $this->config['plugin_links'] ) ) {
+			add_filter( "plugin_action_links_{$this->plugin_basename}", [ $this, 'plugin_action_links' ] );
+		}
+
+		// Plugin meta links
+		if ( ! empty( $this->config['plugin_meta'] ) ) {
+			add_filter( "plugin_row_meta", [ $this, 'plugin_row_meta' ], 10, 2 );
+		}
+
+		// Admin notices
+		if ( ! empty( $this->config['notices'] ) ) {
+			add_action( 'admin_notices', [ $this, 'admin_notices' ] );
+			add_action( 'wp_ajax_wp_register_plugin_dismiss_notice', [ $this, 'dismiss_notice' ] );
+		}
+	}
+
+	/**
+	 * WordPress plugin action links filter - Add custom plugin links.
+	 *
+	 * @param array $links Existing plugin action links
+	 *
+	 * @return array Modified plugin action links
+	 * @since 1.0.0
+	 */
+	public function plugin_action_links( array $links ): array {
+		$custom_links = [];
+
+		foreach ( $this->config['plugin_links'] as $key => $link ) {
+			if ( is_string( $link ) ) {
+				// Simple URL
+				$custom_links[ $key ] = $this->create_plugin_link( $key, $link );
+			} elseif ( is_array( $link ) && ! empty( $link['url'] ) ) {
+				// Advanced configuration
+				if ( ! empty( $link['capability'] ) && ! current_user_can( $link['capability'] ) ) {
+					continue;
+				}
+				$custom_links[ $key ] = $this->create_plugin_link(
+					$link['text'] ?? ucfirst( $key ),
+					$link['url'],
+					$link['target'] ?? '',
+					$link['style'] ?? ''
+				);
+			}
+		}
+
+		return array_merge( $custom_links, $links );
+	}
+
+	/**
+	 * WordPress plugin row meta filter - Add custom meta links.
+	 *
+	 * @param array  $links       Plugin meta links
+	 * @param string $plugin_file Plugin file path
+	 *
+	 * @return array Modified meta links
+	 * @since 1.0.0
+	 */
+	public function plugin_row_meta( array $links, string $plugin_file ): array {
+		if ( $plugin_file !== $this->plugin_basename ) {
+			return $links;
+		}
+
+		foreach ( $this->config['plugin_meta'] as $key => $link ) {
+			if ( is_string( $link ) ) {
+				// Simple URL
+				$links[] = $this->create_plugin_link( ucfirst( $key ), $link, '_blank' );
+			} elseif ( is_array( $link ) && ! empty( $link['url'] ) ) {
+				// Advanced configuration
+				if ( ! empty( $link['capability'] ) && ! current_user_can( $link['capability'] ) ) {
+					continue;
+				}
+				$links[] = $this->create_plugin_link(
+					$link['text'] ?? ucfirst( $key ),
+					$link['url'],
+					$link['target'] ?? '_blank',
+					$link['style'] ?? ''
+				);
+			}
+		}
+
+		return $links;
+	}
+
+	/**
+	 * Display admin notices.
+	 *
+	 * @since 1.0.0
+	 */
+	public function admin_notices(): void {
+		$current_screen = get_current_screen();
+
+		foreach ( $this->config['notices'] as $notice_id => $notice ) {
+			if ( ! $this->should_show_notice( $notice_id, $notice, $current_screen ) ) {
+				continue;
+			}
+
+			$this->render_admin_notice( $notice_id, $notice );
+		}
+	}
+
+	/**
+	 * Handle notice dismissal via AJAX.
+	 *
+	 * @since 1.0.0
+	 */
+	public function dismiss_notice(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( - 1, 403 );
+		}
+
+		$notice_id = sanitize_key( $_POST['notice_id'] ?? '' );
+		if ( empty( $notice_id ) ) {
+			wp_die( - 1, 400 );
+		}
+
+		update_user_meta( get_current_user_id(), "wp_register_plugin_dismissed_{$notice_id}", true );
+		wp_die( 1 );
 	}
 
 	/**
@@ -307,6 +440,158 @@ class Plugin {
 	}
 
 	/**
+	 * Create a plugin link with proper formatting.
+	 *
+	 * @param string $text   Link text
+	 * @param string $url    Link URL
+	 * @param string $target Link target
+	 * @param string $style  Custom CSS styles
+	 *
+	 * @return string Formatted link HTML
+	 * @since 1.0.0
+	 */
+	private function create_plugin_link( string $text, string $url, string $target = '', string $style = '' ): string {
+		$attributes = [];
+
+		if ( ! empty( $target ) ) {
+			$attributes[] = sprintf( 'target="%s"', esc_attr( $target ) );
+		}
+
+		if ( ! empty( $style ) ) {
+			$attributes[] = sprintf( 'style="%s"', esc_attr( $style ) );
+		}
+
+		$attr_string = ! empty( $attributes ) ? ' ' . implode( ' ', $attributes ) : '';
+
+		return sprintf(
+			'<a href="%s"%s>%s</a>',
+			esc_url( $url ),
+			$attr_string,
+			esc_html( $text )
+		);
+	}
+
+	/**
+	 * Check if a notice should be displayed.
+	 *
+	 * @param string    $notice_id      Notice ID
+	 * @param array     $notice         Notice configuration
+	 * @param WP_Screen $current_screen Current admin screen
+	 *
+	 * @return bool Whether to show the notice
+	 * @since 1.0.0
+	 */
+	private function should_show_notice( string $notice_id, array $notice, $current_screen ): bool {
+		// Check capability
+		if ( ! empty( $notice['capability'] ) && ! current_user_can( $notice['capability'] ) ) {
+			return false;
+		}
+
+		// Check if dismissed
+		if ( ! empty( $notice['dismissible'] ) && get_user_meta( get_current_user_id(), "wp_register_plugin_dismissed_{$notice_id}", true ) ) {
+			return false;
+		}
+
+		// Check show_once
+		if ( ! empty( $notice['show_once'] ) && get_option( "wp_register_plugin_shown_{$notice_id}" ) ) {
+			return false;
+		}
+
+		// Check pages restriction
+		if ( ! empty( $notice['pages'] ) && is_array( $notice['pages'] ) ) {
+			$current_page  = $current_screen->id ?? '';
+			$allowed_pages = array_map( function ( $page ) {
+				return str_replace( '-', '_', $page );
+			}, $notice['pages'] );
+
+			if ( ! in_array( $current_page, $allowed_pages ) && ! in_array( str_replace( '_', '-', $current_page ), $notice['pages'] ) ) {
+				return false;
+			}
+		}
+
+		// Check show_until condition
+		if ( ! empty( $notice['show_until'] ) ) {
+			if ( is_callable( $notice['show_until'] ) ) {
+				if ( ! call_user_func( $notice['show_until'] ) ) {
+					return false;
+				}
+			} elseif ( is_string( $notice['show_until'] ) && str_starts_with( $notice['show_until'], 'option_not_empty:' ) ) {
+				$option_name = substr( $notice['show_until'], 17 );
+				if ( ! empty( get_option( $option_name ) ) ) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Render an admin notice.
+	 *
+	 * @param string $notice_id Notice ID
+	 * @param array  $notice    Notice configuration
+	 *
+	 * @since 1.0.0
+	 */
+	private function render_admin_notice( string $notice_id, array $notice ): void {
+		$type        = $notice['type'] ?? 'info';
+		$message     = $notice['message'] ?? '';
+		$dismissible = ! empty( $notice['dismissible'] );
+
+		$classes = [ 'notice', "notice-{$type}" ];
+		if ( $dismissible ) {
+			$classes[] = 'is-dismissible';
+		}
+
+		// Mark as shown for show_once notices
+		if ( ! empty( $notice['show_once'] ) ) {
+			update_option( "wp_register_plugin_shown_{$notice_id}", true, false );
+		}
+
+		printf( '<div class="%s" data-notice-id="%s">', esc_attr( implode( ' ', $classes ) ), esc_attr( $notice_id ) );
+		printf( '<p>%s</p>', wp_kses_post( $message ) );
+		echo '</div>';
+
+		// Add a dismissal script for custom handling
+		if ( $dismissible ) {
+			$this->add_notice_dismissal_script();
+		}
+	}
+
+	/**
+	 * Add JavaScript for notice dismissal.
+	 *
+	 * @since 1.0.0
+	 */
+	private function add_notice_dismissal_script(): void {
+		static $script_added = false;
+
+		if ( $script_added ) {
+			return;
+		}
+
+		$script_added = true;
+		?>
+        <script type="text/javascript">
+            jQuery(document).ready(function ($) {
+                $(document).on('click', '.notice[data-notice-id] .notice-dismiss', function () {
+                    var $notice = $(this).closest('.notice[data-notice-id]');
+                    var noticeId = $notice.data('notice-id');
+
+                    if (noticeId) {
+                        $.post(ajaxurl, {
+                            action: 'wp_register_plugin_dismiss_notice',
+                            notice_id: noticeId
+                        });
+                    }
+                });
+            });
+        </script>
+		<?php
+	}
+
+	/**
 	 * Static method to register plugin from the configuration array.
 	 *
 	 * @param array $config Configuration array
@@ -324,4 +609,5 @@ class Plugin {
 			}
 		}
 	}
+
 }

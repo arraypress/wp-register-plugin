@@ -36,6 +36,11 @@ class Plugin {
 	private string $plugin_basename;
 
 	/**
+	 * @var string Plugin directory path
+	 */
+	private string $plugin_dir;
+
+	/**
 	 * @var string Plugin directory name for CSS classes
 	 */
 	private string $plugin_dir_name;
@@ -72,6 +77,7 @@ class Plugin {
 
 		$this->plugin_file        = $config['file'];
 		$this->plugin_basename    = plugin_basename( $this->plugin_file );
+		$this->plugin_dir         = plugin_dir_path( $this->plugin_file );
 		$this->plugin_dir_name    = dirname( $this->plugin_basename );
 		$this->bootstrap_callback = $config['bootstrap'];
 
@@ -84,6 +90,10 @@ class Plugin {
 		$this->config = wp_parse_args( $config, [
 			'priority'         => 10,
 			'early_includes'   => [],
+			'includes'         => [],
+			'constants'        => null,
+			'textdomain'       => null,
+			'setup_hooks'      => [],
 			'activation'       => null,
 			'deactivation'     => null,
 			'success'          => null,
@@ -139,12 +149,12 @@ class Plugin {
 			register_deactivation_hook( $this->plugin_file, $this->config['deactivation'] );
 		}
 
-		// Set up plugin links and notices for successful load
+		// Set up plugin links and notices for a successful load
 		$this->setup_plugin_enhancements();
 	}
 
 	/**
-	 * Quit without loading - set up error display.
+	 * Quit without loading - set up the error display.
 	 *
 	 * @since 1.0.0
 	 */
@@ -160,8 +170,17 @@ class Plugin {
 	 * @since 1.0.0
 	 */
 	public function plugins_loaded(): void {
+		// Include files before bootstrap
+		$this->include_files();
+
+		// Define constants
+		$this->define_constants();
+
 		// Execute bootstrap callback
 		call_user_func( $this->bootstrap_callback );
+
+		// Execute setup hooks
+		$this->execute_setup_hooks();
 
 		// Execute success callback if provided
 		if ( ! empty( $this->config['success'] ) && is_callable( $this->config['success'] ) ) {
@@ -175,7 +194,206 @@ class Plugin {
 	 * @since 1.0.0
 	 */
 	public function load_textdomain(): void {
+		// Load register plugin textdomain
 		load_plugin_textdomain( 'wp-register-plugin' );
+
+		// Load plugin-specific textdomain if configured
+		if ( ! empty( $this->config['textdomain'] ) ) {
+			$this->load_plugin_textdomain();
+		}
+	}
+
+	/**
+	 * Load plugin-specific textdomain.
+	 *
+	 * @since 1.0.0
+	 */
+	private function load_plugin_textdomain(): void {
+		$textdomain_config = $this->config['textdomain'];
+
+		if ( is_string( $textdomain_config ) ) {
+			// Simple string - just the domain
+			load_plugin_textdomain( $textdomain_config, false, $this->plugin_dir_name . '/languages' );
+		} elseif ( is_array( $textdomain_config ) ) {
+			// Array configuration
+			$domain = $textdomain_config['domain'] ?? '';
+			$path   = $textdomain_config['path'] ?? '/languages';
+
+			if ( ! empty( $domain ) ) {
+				if ( isset( $textdomain_config['callback'] ) && is_callable( $textdomain_config['callback'] ) ) {
+					// Custom callback
+					call_user_func( $textdomain_config['callback'], $this->plugin_dir );
+				} else {
+					// Standard loading
+					$full_path = $this->plugin_dir_name . $path;
+					load_plugin_textdomain( $domain, false, $full_path );
+				}
+			}
+		}
+	}
+
+	/**
+	 * Include configured files.
+	 *
+	 * @since 1.0.0
+	 */
+	private function include_files(): void {
+		if ( empty( $this->config['includes'] ) || ! is_array( $this->config['includes'] ) ) {
+			return;
+		}
+
+		foreach ( $this->config['includes'] as $file ) {
+			if ( ! is_string( $file ) ) {
+				continue;
+			}
+
+			// Make path relative to plugin directory
+			$file_path = $this->plugin_dir . ltrim( $file, '/' );
+
+			if ( file_exists( $file_path ) ) {
+				require_once $file_path;
+			}
+		}
+	}
+
+	/**
+	 * Define plugin constants.
+	 *
+	 * @since 1.0.0
+	 */
+	private function define_constants(): void {
+		if ( empty( $this->config['constants'] ) ) {
+			return;
+		}
+
+		$constants_config = $this->config['constants'];
+
+		if ( is_string( $constants_config ) ) {
+			// Simple string - just the prefix
+			$this->define_standard_constants( $constants_config );
+		} elseif ( is_array( $constants_config ) && ! empty( $constants_config['prefix'] ) ) {
+			// Array configuration
+			$prefix  = $constants_config['prefix'];
+			$version = $constants_config['version'] ?? $this->get_plugin_version();
+			$skip    = $constants_config['skip'] ?? [];
+
+			$this->define_standard_constants( $prefix, $version, $skip );
+
+			// Define custom constants
+			if ( ! empty( $constants_config['definitions'] ) && is_array( $constants_config['definitions'] ) ) {
+				foreach ( $constants_config['definitions'] as $name => $value ) {
+					if ( ! defined( $name ) ) {
+						define( $name, $value );
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Define standard plugin constants.
+	 *
+	 * @param string $prefix  Constant prefix
+	 * @param string $version Plugin version
+	 * @param array  $skip    Constants to skip
+	 *
+	 * @since 1.0.0
+	 */
+	private function define_standard_constants( string $prefix, string $version = '', array $skip = [] ): void {
+		$constants = [
+			'VERSION' => $version ?: $this->get_plugin_version(),
+			'FILE'    => $this->plugin_file,
+			'BASE'    => $this->plugin_basename,
+			'DIR'     => $this->plugin_dir,
+			'URL'     => plugin_dir_url( $this->plugin_file ),
+		];
+
+		foreach ( $constants as $suffix => $value ) {
+			if ( in_array( $suffix, $skip, true ) ) {
+				continue;
+			}
+
+			$constant_name = $prefix . '_PLUGIN_' . $suffix;
+
+			if ( ! defined( $constant_name ) ) {
+				define( $constant_name, $value );
+			}
+		}
+	}
+
+	/**
+	 * Execute setup hooks.
+	 *
+	 * @since 1.0.0
+	 */
+	private function execute_setup_hooks(): void {
+		if ( empty( $this->config['setup_hooks'] ) || ! is_array( $this->config['setup_hooks'] ) ) {
+			return;
+		}
+
+		foreach ( $this->config['setup_hooks'] as $hook => $callback ) {
+			if ( is_callable( $callback ) ) {
+				// Check if callback expects the plugin file parameter
+				$reflection = new \ReflectionFunction( $callback );
+				if ( $reflection->getNumberOfParameters() > 0 ) {
+					add_action( $hook, function () use ( $callback ) {
+						call_user_func( $callback, $this->plugin_file );
+					} );
+				} else {
+					add_action( $hook, $callback );
+				}
+			} elseif ( $hook === 'woocommerce_compatibility' && is_array( $callback ) ) {
+				// Special handling for WooCommerce compatibility
+				$this->setup_woocommerce_compatibility( $callback );
+			}
+		}
+	}
+
+	/**
+	 * Setup WooCommerce compatibility.
+	 *
+	 * @param array $config Compatibility configuration
+	 *
+	 * @since 1.0.0
+	 */
+	private function setup_woocommerce_compatibility( array $config ): void {
+		add_action( 'before_woocommerce_init', function () use ( $config ) {
+			if ( ! class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+				return;
+			}
+
+			$features   = $config['features'] ?? [ 'custom_order_tables' ];
+			$compatible = $config['compatible'] ?? true;
+
+			foreach ( $features as $feature ) {
+				\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
+					$feature,
+					$this->plugin_file,
+					$compatible
+				);
+			}
+
+			// Execute custom callback if provided
+			if ( ! empty( $config['callback'] ) && is_callable( $config['callback'] ) ) {
+				call_user_func( $config['callback'], $this->plugin_file );
+			}
+		} );
+	}
+
+	/**
+	 * Get plugin version from header.
+	 *
+	 * @return string
+	 * @since 1.0.0
+	 */
+	private function get_plugin_version(): string {
+		if ( ! function_exists( 'get_plugin_data' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$plugin_data = get_plugin_data( $this->plugin_file );
+
+		return $plugin_data['Version'] ?? '1.0.0';
 	}
 
 	/**

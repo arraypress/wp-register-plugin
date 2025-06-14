@@ -24,6 +24,7 @@ if ( ! function_exists( 'register_plugin' ) ):
 	 * @param array    $config    Configuration options
 	 *
 	 * @return void
+	 * @since 1.0.0
 	 */
 	function register_plugin( string $file, callable $bootstrap, array $config = [] ): void {
 		$config['file']      = $file;
@@ -42,14 +43,16 @@ if ( ! function_exists( 'register_edd_plugin' ) ):
 	 * @param array    $config    Additional configuration
 	 *
 	 * @return void
+	 * @since 1.0.0
 	 */
 	function register_edd_plugin( string $file, callable $bootstrap, array $config = [] ): void {
 		$defaults = [
 			'requirements' => [
 				'php'                    => '7.4',
-				'wp'                     => '6.8.1',
-				'easy-digital-downloads' => '3.3.9',
+				'wp'                     => '6.0',
+				'easy-digital-downloads' => '3.0',
 			],
+			'priority'     => 99, // Load after EDD ExtensionLoader (priority 98)
 		];
 
 		$config = array_merge_recursive( $defaults, $config );
@@ -66,13 +69,14 @@ if ( ! function_exists( 'register_woocommerce_plugin' ) ):
 	 * @param array    $config    Additional configuration
 	 *
 	 * @return void
+	 * @since 1.0.0
 	 */
 	function register_woocommerce_plugin( string $file, callable $bootstrap, array $config = [] ): void {
 		$defaults = [
 			'requirements' => [
 				'php'         => '7.4',
-				'wp'          => '6.8.1',
-				'woocommerce' => '9.8.5',
+				'wp'          => '6.0',
+				'woocommerce' => '5.0',
 			],
 			'setup_hooks'  => [
 				'woocommerce_compatibility' => [
@@ -80,6 +84,7 @@ if ( ! function_exists( 'register_woocommerce_plugin' ) ):
 					'compatible' => true,
 				],
 			],
+			'priority'     => 20, // Load after WooCommerce (which loads at priority 10)
 		];
 
 		$config = array_merge_recursive( $defaults, $config );
@@ -87,29 +92,51 @@ if ( ! function_exists( 'register_woocommerce_plugin' ) ):
 	}
 endif;
 
-if ( ! function_exists( 'register_pro_plugin' ) ):
+if ( ! function_exists( 'register_elementor_plugin' ) ):
 	/**
-	 * Register a Pro plugin that conflicts with its free version
+	 * Register an Elementor plugin with common defaults
 	 *
-	 * @param string   $file        Plugin file (__FILE__)
-	 * @param callable $bootstrap   Bootstrap function
-	 * @param string   $free_plugin Free version plugin path
-	 * @param array    $config      Additional configuration
+	 * @param string   $file      Plugin file (__FILE__)
+	 * @param callable $bootstrap Bootstrap function
+	 * @param array    $config    Additional configuration
 	 *
 	 * @return void
+	 * @since 1.0.0
 	 */
-	function register_pro_plugin( string $file, callable $bootstrap, string $free_plugin, array $config = [] ): void {
+	function register_elementor_plugin( string $file, callable $bootstrap, array $config = [] ): void {
 		$defaults = [
 			'requirements' => [
-				'php' => '7.4',
-				'wp'  => '6.0',
+				'php'       => '7.4',
+				'wp'        => '6.0',
+				'elementor' => '3.0.0',
 			],
-			'conflicts'    => [
-				'free-version' => $free_plugin,
+			'priority'     => 20, // Load after Elementor
+		];
+
+		$config = array_merge_recursive( $defaults, $config );
+		register_plugin( $file, $bootstrap, $config );
+	}
+endif;
+
+if ( ! function_exists( 'register_acf_plugin' ) ):
+	/**
+	 * Register an ACF plugin with common defaults
+	 *
+	 * @param string   $file      Plugin file (__FILE__)
+	 * @param callable $bootstrap Bootstrap function
+	 * @param array    $config    Additional configuration
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	function register_acf_plugin( string $file, callable $bootstrap, array $config = [] ): void {
+		$defaults = [
+			'requirements' => [
+				'php'                    => '7.4',
+				'wp'                     => '6.0',
+				'advanced-custom-fields' => '5.0.0',
 			],
-			'plugin_links' => [
-				'support' => 'https://support.example.com', // Default pro support
-			],
+			'priority'     => 20, // Load after ACF
 		];
 
 		$config = array_merge_recursive( $defaults, $config );

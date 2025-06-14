@@ -61,6 +61,16 @@ class Plugin {
 	private array $config;
 
 	/**
+	 * @var array Track registered plugins to prevent duplicates
+	 */
+	private static array $registered_plugins = [];
+
+	/**
+	 * @var bool Track if this instance has been executed
+	 */
+	private bool $executed = false;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param array $config Configuration array
@@ -81,11 +91,6 @@ class Plugin {
 		$this->plugin_dir_name    = dirname( $this->plugin_basename );
 		$this->bootstrap_callback = $config['bootstrap'];
 
-		// Set up requirements
-		$requirements       = $config['requirements'] ?? [];
-		$conflicts          = $config['conflicts'] ?? [];
-		$this->requirements = new Requirements( $requirements, $conflicts );
-
 		// Default config
 		$this->config = wp_parse_args( $config, [
 			'priority'         => 10,
@@ -105,16 +110,52 @@ class Plugin {
 			'plugin_meta'      => [],
 			'notices'          => [],
 		] );
+
+		// Prevent duplicate registration
+		if ( isset( self::$registered_plugins[ $this->plugin_basename ] ) ) {
+			return;
+		}
+		self::$registered_plugins[ $this->plugin_basename ] = true;
 	}
 
 	/**
 	 * Initialize the plugin instance.
 	 *
+	 * Always defers to plugins_loaded to ensure all plugin constants are available.
+	 *
 	 * @since 1.0.0
 	 */
 	public function setup(): void {
-		// Always load textdomain
-		add_action( 'plugins_loaded', [ $this, 'load_textdomain' ] );
+		// Always load textdomain early
+		add_action( 'plugins_loaded', [ $this, 'load_textdomain' ], 1 );
+
+		// Always defer main initialization to plugins_loaded
+		// This ensures all plugins are loaded and constants are defined
+		if ( did_action( 'plugins_loaded' ) ) {
+			// If plugins_loaded already fired, run immediately
+			$this->delayed_setup();
+		} else {
+			// Otherwise, wait for plugins_loaded
+			add_action( 'plugins_loaded', [ $this, 'delayed_setup' ], $this->config['priority'] );
+		}
+	}
+
+	/**
+	 * Delayed setup that runs on plugins_loaded.
+	 *
+	 * This ensures all plugin constants are available before checking requirements.
+	 *
+	 * @since 1.0.0
+	 */
+	public function delayed_setup(): void {
+		// Prevent double execution
+		if ( $this->executed ) {
+			return;
+		}
+		$this->executed = true;
+
+		// Now we can safely check requirements since all plugins are loaded
+		$this->init_requirements();
 
 		// Check if we can load or need to quit
 		if ( $this->requirements->met() ) {
@@ -122,6 +163,18 @@ class Plugin {
 		} else {
 			$this->quit();
 		}
+	}
+
+	/**
+	 * Initialize requirements after plugins_loaded.
+	 *
+	 * @since 1.0.0
+	 */
+	private function init_requirements(): void {
+		$requirements = $this->config['requirements'] ?? [];
+		$conflicts    = $this->config['conflicts'] ?? [];
+
+		$this->requirements = new Requirements( $requirements, $conflicts );
 	}
 
 	/**
@@ -137,8 +190,22 @@ class Plugin {
 			}
 		}
 
-		// Bootstrap on plugins_loaded
-		add_action( 'plugins_loaded', [ $this, 'plugins_loaded' ], $this->config['priority'] );
+		// Include files before bootstrap
+		$this->include_files();
+
+		// Define constants
+		$this->define_constants();
+
+		// Execute bootstrap callback immediately (we're already in plugins_loaded)
+		call_user_func( $this->bootstrap_callback );
+
+		// Execute setup hooks
+		$this->execute_setup_hooks();
+
+		// Execute success callback if provided
+		if ( ! empty( $this->config['success'] ) && is_callable( $this->config['success'] ) ) {
+			call_user_func( $this->config['success'] );
+		}
 
 		// Register activation/deactivation hooks
 		if ( ! empty( $this->config['activation'] ) && is_callable( $this->config['activation'] ) ) {
@@ -167,25 +234,11 @@ class Plugin {
 	/**
 	 * WordPress plugins_loaded hook.
 	 *
-	 * @since 1.0.0
+	 * @deprecated Kept for backward compatibility, use delayed_setup instead
+	 * @since      1.0.0
 	 */
 	public function plugins_loaded(): void {
-		// Include files before bootstrap
-		$this->include_files();
-
-		// Define constants
-		$this->define_constants();
-
-		// Execute bootstrap callback
-		call_user_func( $this->bootstrap_callback );
-
-		// Execute setup hooks
-		$this->execute_setup_hooks();
-
-		// Execute success callback if provided
-		if ( ! empty( $this->config['success'] ) && is_callable( $this->config['success'] ) ) {
-			call_user_func( $this->config['success'] );
-		}
+		$this->delayed_setup();
 	}
 
 	/**
@@ -332,7 +385,10 @@ class Plugin {
 		}
 
 		foreach ( $this->config['setup_hooks'] as $hook => $callback ) {
-			if ( is_callable( $callback ) ) {
+			if ( $hook === 'woocommerce_compatibility' && is_array( $callback ) ) {
+				// Special handling for WooCommerce compatibility
+				$this->setup_woocommerce_compatibility( $callback );
+			} elseif ( is_callable( $callback ) ) {
 				// Check if callback expects the plugin file parameter
 				$reflection = new \ReflectionFunction( $callback );
 				if ( $reflection->getNumberOfParameters() > 0 ) {
@@ -342,9 +398,6 @@ class Plugin {
 				} else {
 					add_action( $hook, $callback );
 				}
-			} elseif ( $hook === 'woocommerce_compatibility' && is_array( $callback ) ) {
-				// Special handling for WooCommerce compatibility
-				$this->setup_woocommerce_compatibility( $callback );
 			}
 		}
 	}
@@ -357,7 +410,7 @@ class Plugin {
 	 * @since 1.0.0
 	 */
 	private function setup_woocommerce_compatibility( array $config ): void {
-		add_action( 'before_woocommerce_init', function () use ( $config ) {
+		$compatibility_callback = function () use ( $config ) {
 			if ( ! class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
 				return;
 			}
@@ -377,7 +430,16 @@ class Plugin {
 			if ( ! empty( $config['callback'] ) && is_callable( $config['callback'] ) ) {
 				call_user_func( $config['callback'], $this->plugin_file );
 			}
-		} );
+		};
+
+		// Check if before_woocommerce_init already fired
+		if ( did_action( 'before_woocommerce_init' ) ) {
+			// Run immediately if WooCommerce hook already fired
+			$compatibility_callback();
+		} else {
+			// Otherwise wait for the hook
+			add_action( 'before_woocommerce_init', $compatibility_callback );
+		}
 	}
 
 	/**

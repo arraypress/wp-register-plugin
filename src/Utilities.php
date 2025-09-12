@@ -49,8 +49,8 @@ if ( ! function_exists( 'register_edd_plugin' ) ):
 		$defaults = [
 			'requirements' => [
 				'php'                    => '7.4',
-				'wp'                     => '6.0',
-				'easy-digital-downloads' => '3.0',
+				'wp'                     => '6.8.2',
+				'easy-digital-downloads' => '3.5.1',
 			],
 			'priority'     => 99, // Load after EDD ExtensionLoader (priority 98)
 		];
@@ -75,8 +75,8 @@ if ( ! function_exists( 'register_woocommerce_plugin' ) ):
 		$defaults = [
 			'requirements' => [
 				'php'         => '7.4',
-				'wp'          => '6.0',
-				'woocommerce' => '5.0',
+				'wp'          => '6.8.2',
+				'woocommerce' => '10.1.2',
 			],
 			'setup_hooks'  => [
 				'woocommerce_compatibility' => [
@@ -85,58 +85,6 @@ if ( ! function_exists( 'register_woocommerce_plugin' ) ):
 				],
 			],
 			'priority'     => 20, // Load after WooCommerce (which loads at priority 10)
-		];
-
-		$config = array_merge_recursive( $defaults, $config );
-		register_plugin( $file, $bootstrap, $config );
-	}
-endif;
-
-if ( ! function_exists( 'register_elementor_plugin' ) ):
-	/**
-	 * Register an Elementor plugin with common defaults
-	 *
-	 * @param string   $file      Plugin file (__FILE__)
-	 * @param callable $bootstrap Bootstrap function
-	 * @param array    $config    Additional configuration
-	 *
-	 * @return void
-	 * @since 1.0.0
-	 */
-	function register_elementor_plugin( string $file, callable $bootstrap, array $config = [] ): void {
-		$defaults = [
-			'requirements' => [
-				'php'       => '7.4',
-				'wp'        => '6.0',
-				'elementor' => '3.0.0',
-			],
-			'priority'     => 20, // Load after Elementor
-		];
-
-		$config = array_merge_recursive( $defaults, $config );
-		register_plugin( $file, $bootstrap, $config );
-	}
-endif;
-
-if ( ! function_exists( 'register_acf_plugin' ) ):
-	/**
-	 * Register an ACF plugin with common defaults
-	 *
-	 * @param string   $file      Plugin file (__FILE__)
-	 * @param callable $bootstrap Bootstrap function
-	 * @param array    $config    Additional configuration
-	 *
-	 * @return void
-	 * @since 1.0.0
-	 */
-	function register_acf_plugin( string $file, callable $bootstrap, array $config = [] ): void {
-		$defaults = [
-			'requirements' => [
-				'php'                    => '7.4',
-				'wp'                     => '6.0',
-				'advanced-custom-fields' => '5.0.0',
-			],
-			'priority'     => 20, // Load after ACF
 		];
 
 		$config = array_merge_recursive( $defaults, $config );

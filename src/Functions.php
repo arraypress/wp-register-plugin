@@ -91,3 +91,23 @@ if ( ! function_exists( 'register_woocommerce_plugin' ) ):
 		register_plugin( $file, $bootstrap, $config );
 	}
 endif;
+
+if ( ! function_exists( 'register_network_plugin' ) ):
+	/**
+	 * Register a network-wide plugin with requirement checking
+	 *
+	 * @param string   $file      Plugin file (__FILE__)
+	 * @param callable $bootstrap Bootstrap function
+	 * @param array    $config    Additional configuration
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	function register_network_plugin( string $file, callable $bootstrap, array $config = [] ): void {
+		$config['network']   = true;
+		$config['file']      = $file;
+		$config['bootstrap'] = $bootstrap;
+
+		register_plugin( $file, $bootstrap, $config );
+	}
+endif;

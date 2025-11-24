@@ -42,7 +42,7 @@ register_plugin( __FILE__, function() {
 ] );
 
 // Using the Plugin class directly
-use ArrayPress\WP\Register\Plugin;
+use ArrayPress\RegisterPlugin\Plugin;
 
 Plugin::register([
     'file' => __FILE__,

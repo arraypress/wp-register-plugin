@@ -11,7 +11,7 @@
  * @since     1.0.0
  */
 
-namespace ArrayPress\WP\Register;
+namespace ArrayPress\RegisterPlugin;
 
 use InvalidArgumentException;
 use WP_Screen;

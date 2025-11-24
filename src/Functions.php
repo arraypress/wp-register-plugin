@@ -13,7 +13,7 @@ declare( strict_types=1 );
 
 defined( 'ABSPATH' ) || exit;
 
-use ArrayPress\WP\Register\Plugin;
+use ArrayPress\RegisterPlugin\Plugin;
 
 if ( ! function_exists( 'register_plugin' ) ):
 	/**
@@ -49,8 +49,8 @@ if ( ! function_exists( 'register_edd_plugin' ) ):
 		$defaults = [
 			'requirements' => [
 				'php'                    => '7.4',
-				'wp'                     => '6.8.2',
-				'easy-digital-downloads' => '3.5.1',
+				'wp'                     => '6.8.4',
+				'easy-digital-downloads' => '3.6.1',
 			],
 			'priority'     => 99, // Load after EDD ExtensionLoader (priority 98)
 		];
@@ -75,8 +75,8 @@ if ( ! function_exists( 'register_woocommerce_plugin' ) ):
 		$defaults = [
 			'requirements' => [
 				'php'         => '7.4',
-				'wp'          => '6.8.2',
-				'woocommerce' => '10.1.2',
+				'wp'          => '6.8.4',
+				'woocommerce' => '10.3.5',
 			],
 			'setup_hooks'  => [
 				'woocommerce_compatibility' => [

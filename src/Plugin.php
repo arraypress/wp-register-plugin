@@ -454,7 +454,11 @@ class Plugin {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
 
-        $plugin_data = get_plugin_data( $this->plugin_file );
+        // Pass markup=false and translate=false so reading the header here
+        // doesn't trigger _load_textdomain_just_in_time() before WP's init
+        // hook fires (WP 6.7+ flags that as doing_it_wrong). We only need
+        // the raw Version string.
+        $plugin_data = get_plugin_data( $this->plugin_file, false, false );
 
         return $plugin_data['Version'] ?? '1.0.0';
     }
@@ -603,7 +607,7 @@ class Plugin {
                     continue;
                 }
                 $custom_links[ $key ] = $this->create_plugin_link(
-                        $link['text'] ?? ucfirst( $key ),
+                        $this->resolve_text( $link['text'] ?? null, $key ),
                         $link['url'],
                         $link['target'] ?? '',
                         $link['style'] ?? ''
@@ -612,6 +616,31 @@ class Plugin {
         }
 
         return array_merge( $custom_links, $links );
+    }
+
+    /**
+     * Resolve a config 'text'/'desc' value into a string.
+     *
+     * Accepts either a plain string (current behaviour) or a callable
+     * (typically a closure wrapping `__()`). Callables let plugins defer
+     * translation until filter-time so the textdomain isn't loaded too
+     * early — required for WP 6.7+ compliance.
+     *
+     * @param string|callable|null $value Raw value from the config array.
+     * @param string               $key   Fallback key when nothing is provided.
+     *
+     * @return string
+     */
+    private function resolve_text( $value, string $key ): string {
+        if ( null === $value || '' === $value ) {
+            return ucfirst( $key );
+        }
+
+        if ( ! is_string( $value ) && is_callable( $value ) ) {
+            return (string) $value();
+        }
+
+        return (string) $value;
     }
 
     /**
@@ -638,7 +667,7 @@ class Plugin {
                     continue;
                 }
                 $links[] = $this->create_plugin_link(
-                        $link['text'] ?? ucfirst( $key ),
+                        $this->resolve_text( $link['text'] ?? null, $key ),
                         $link['url'],
                         $link['target'] ?? '_blank',
                         $link['style'] ?? ''

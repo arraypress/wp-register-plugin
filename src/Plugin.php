@@ -196,8 +196,21 @@ class Plugin {
         // Define constants
         $this->define_constants();
 
-        // Execute bootstrap callback immediately (we're already in plugins_loaded)
-        call_user_func( $this->bootstrap_callback );
+        // Defer the user's bootstrap callback to `init:0`. The bootstrap
+        // typically instantiates classes whose constructors / property
+        // defaults call `__()` (for translated labels, columns, fields,
+        // etc.) — and `_load_textdomain_just_in_time()` flags those as
+        // doing_it_wrong if they fire before WP's init action (WP 6.7+).
+        // Class file includes and constant definitions still happen in
+        // plugins_loaded above, so the autoloader and constants are
+        // ready before anything else hooks into init. If init has
+        // already fired (rare: register_*_plugin() called from inside
+        // another init callback), run the bootstrap immediately.
+        if ( did_action( 'init' ) ) {
+            call_user_func( $this->bootstrap_callback );
+        } else {
+            add_action( 'init', $this->bootstrap_callback, 0 );
+        }
 
         // Execute setup hooks
         $this->execute_setup_hooks();

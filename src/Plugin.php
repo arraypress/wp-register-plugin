@@ -849,6 +849,13 @@ class Plugin {
         $message     = $notice['message'] ?? '';
         $dismissible = ! empty( $notice['dismissible'] );
 
+        // Allow `message` to be a closure so callers can keep `__()` out of
+        // the top-level config array — deferring translation until the
+        // notice is actually rendered (which is on admin_notices, after init).
+        if ( ! is_string( $message ) && is_callable( $message ) ) {
+            $message = (string) $message();
+        }
+
         $classes = [ 'notice', "notice-{$type}" ];
         if ( $dismissible ) {
             $classes[] = 'is-dismissible';

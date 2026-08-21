@@ -2,6 +2,12 @@
 <ruleset name="wordpress-formatting">
     <description>WordPress formatting, minus the rules that fight this codebase.</description>
 
+    <!-- Registered here rather than by phpcodesniffer-composer-installer:
+         that plugin registers standards by running phpcs, and phpcs loads this
+         package's autoloader, which opens src/Functions.php and exits on the
+         ABSPATH guard, so the registration silently never happened. -->
+    <config name="installed_paths" value="vendor/wp-coding-standards/wpcs,vendor/phpcompatibility/php-compatibility,vendor/phpcompatibility/phpcompatibility-paragonie,vendor/phpcompatibility/phpcompatibility-wp,vendor/phpcsstandards/phpcsutils,vendor/phpcsstandards/phpcsextra"/>
+
     <rule ref="WordPress-Core">
         <!-- PHP 8.2 is the floor. WPCS forbids short arrays for PHP 5.3
              compatibility that stopped mattering years ago, and rewriting some
@@ -32,4 +38,10 @@
              worse to read, not better. -->
         <exclude name="Universal.NamingConventions.NoReservedKeywordParameterNames"/>
     </rule>
+
+    <file>src</file>
+    <arg name="extensions" value="php"/>
+    <arg name="basepath" value="."/>
+    <arg name="colors"/>
+    <arg value="sp"/>
 </ruleset>

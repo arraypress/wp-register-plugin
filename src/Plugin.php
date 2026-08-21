@@ -753,6 +753,10 @@ class Plugin {
 		$errors = $this->requirements->get_errors();
 
 		foreach ( $errors->get_error_messages() as $message ) {
+			// Escaped by wp_kses_post above; wpautop only adds paragraph tags
+			// around what it is given. The messages carry deliberate markup
+			// naming the missing dependency in bold.
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			echo wpautop( wp_kses_post( $message ) );
 		}
 	}

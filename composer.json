@@ -76,7 +76,7 @@
   "scripts": {
     "test": "php -d auto_prepend_file=tests/constants.php vendor/bin/phpunit",
     "lint": "phpcs",
-    "format": "phpcbf --standard=phpcs-format.xml.dist src",
-    "format:check": "phpcs --standard=phpcs-format.xml.dist src"
+    "format": "phpcbf --standard=phpcs-format.xml.dist",
+    "format:check": "phpcs --standard=phpcs-format.xml.dist"
   }
 }

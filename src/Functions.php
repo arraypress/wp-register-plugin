@@ -11,7 +11,15 @@
 
 declare( strict_types=1 );
 
-defined( 'ABSPATH' ) || exit;
+// return, not exit. This file is a Composer `files` autoload entry, so it
+// runs whenever anything requires the autoloader -- phpcs, phpunit, a composer
+// script. Ending the process there kills the tool with status 0 and no output,
+// which reads as success: the standards check reported clean for weeks without
+// ever having looked at a file. Returning gives the same protection, and is
+// what other packages loaded this way do.
+if ( ! defined( 'ABSPATH' ) ) {
+	return;
+}
 
 use ArrayPress\RegisterPlugin\Plugin;
 

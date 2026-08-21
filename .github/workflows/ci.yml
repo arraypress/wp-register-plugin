@@ -60,5 +60,13 @@ jobs:
           }
           exit($bad ? 1 : 0);'
 
+      - name: WordPress standards
+        # Scoped to the sniffs that catch defects rather than preferences; the
+        # rationale is in phpcs.xml.dist and phpcs-format.xml.dist.
+        if: matrix.php == '8.2'
+        run: |
+          composer lint
+          composer format:check
+
       - name: Tests
         run: composer test -- --colors=always

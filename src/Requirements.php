@@ -63,32 +63,32 @@ class Requirements {
 			'php'                    => [
 				'name'  => 'PHP',
 				'check' => 'phpversion',
-				'type'  => 'function'
+				'type'  => 'function',
 			],
 			'wp'                     => [
 				'name'  => 'WordPress',
 				'check' => [ 'get_bloginfo', 'version' ],
-				'type'  => 'function_with_args'
+				'type'  => 'function_with_args',
 			],
 			'easy-digital-downloads' => [
 				'name'  => 'Easy Digital Downloads',
 				'check' => 'EDD_VERSION',
-				'type'  => 'constant'
+				'type'  => 'constant',
 			],
 			'woocommerce'            => [
 				'name'  => 'WooCommerce',
 				'check' => 'WC_VERSION',
-				'type'  => 'constant'
+				'type'  => 'constant',
 			],
 			'elementor'              => [
 				'name'  => 'Elementor',
 				'check' => 'ELEMENTOR_VERSION',
-				'type'  => 'constant'
+				'type'  => 'constant',
 			],
 			'advanced-custom-fields' => [
 				'name'  => 'Advanced Custom Fields',
 				'check' => [ $this, 'check_acf_version' ],
-				'type'  => 'callback'
+				'type'  => 'callback',
 			],
 		];
 	}
@@ -491,16 +491,19 @@ class Requirements {
 		// dependency is the wrong version, when it is simply absent.
 		if ( '' === $minimum ) {
 			return sprintf(
-			/* translators: %s: requirement name */
-				__( '<strong>Missing %s</strong>', 'arraypress' ),
-				esc_html( $this->parse_property( $requirement, 'name' ) )
+				'<strong>%s</strong>',
+				sprintf(
+					/* translators: %s: name of the missing requirement */
+					esc_html__( 'Missing %s', 'arraypress' ),
+					esc_html( $this->parse_property( $requirement, 'name' ) )
+				)
 			);
 		}
 
 		return sprintf(
-		/* translators: %1$s: requirement name, %2$s: minimum version */
-			__( '<strong>Missing %1$s</strong>: minimum required %2$s', 'arraypress' ),
-			esc_html( $this->parse_property( $requirement, 'name' ) ),
+			/* translators: %1$s: name of the missing requirement, %2$s: minimum version required */
+			esc_html__( 'Missing %1$s: minimum required %2$s', 'arraypress' ),
+			'<strong>' . esc_html( $this->parse_property( $requirement, 'name' ) ) . '</strong>',
 			'<strong>' . esc_html( $minimum ) . '</strong>'
 		);
 	}
@@ -521,9 +524,9 @@ class Requirements {
 
 		return sprintf(
 		/* translators: %s: conflicting plugin name */
-			__( '<strong>Conflict detected</strong>: %s is active and conflicts with this plugin.', 'arraypress' ),
+			/* translators: %s: name of the conflicting plugin */
+			esc_html__( 'Conflict detected: %s is active and conflicts with this plugin.', 'arraypress' ),
 			'<strong>' . esc_html( $this->parse_property( $conflict, 'name' ) ) . '</strong>'
 		);
 	}
-
 }

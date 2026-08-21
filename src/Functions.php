@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 
 use ArrayPress\RegisterPlugin\Plugin;
 
-if ( ! function_exists( 'register_plugin' ) ):
+if ( ! function_exists( 'register_plugin' ) ) :
 	/**
 	 * Register a plugin with requirement checking
 	 *
@@ -34,7 +34,7 @@ if ( ! function_exists( 'register_plugin' ) ):
 	}
 endif;
 
-if ( ! function_exists( 'register_edd_plugin' ) ):
+if ( ! function_exists( 'register_edd_plugin' ) ) :
 	/**
 	 * Register an EDD plugin with common defaults
 	 *
@@ -60,7 +60,7 @@ if ( ! function_exists( 'register_edd_plugin' ) ):
 	}
 endif;
 
-if ( ! function_exists( 'register_woocommerce_plugin' ) ):
+if ( ! function_exists( 'register_woocommerce_plugin' ) ) :
 	/**
 	 * Register a WooCommerce plugin with common defaults
 	 *
@@ -92,7 +92,7 @@ if ( ! function_exists( 'register_woocommerce_plugin' ) ):
 	}
 endif;
 
-if ( ! function_exists( 'register_network_plugin' ) ):
+if ( ! function_exists( 'register_network_plugin' ) ) :
 	/**
 	 * Register a network-wide plugin with requirement checking
 	 *

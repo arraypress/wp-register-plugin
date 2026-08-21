@@ -1,6 +1,5 @@
 {
   "name": "arraypress/wp-register-plugin",
-  "version": "1.0.0",
   "description": "A universal WordPress plugin registration system with flexible requirements checking and conflict detection. Simplifies plugin development with smart defaults for EDD, WooCommerce, Elementor, and custom ecosystems.",
   "type": "library",
   "license": "GPL-2.0-or-later",

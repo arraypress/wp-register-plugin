@@ -58,5 +58,16 @@
     "addon-development",
     "pro-plugin",
     "free-plugin-conflict"
-  ]
+  ],
+  "require-dev": {
+    "phpunit/phpunit": "^11.0 || ^12.0 || ^13.0"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "ArrayPress\\RegisterPlugin\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "php -d auto_prepend_file=tests/constants.php vendor/bin/phpunit"
+  }
 }

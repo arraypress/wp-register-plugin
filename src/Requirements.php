@@ -118,7 +118,10 @@ class Requirements {
 		$known = $this->get_known_dependency( $id );
 
 		$args = wp_parse_args( $args, [
-			'minimum' => '1.0',
+			// No minimum unless one is asked for. Defaulting to '1.0' made
+			// every check that cannot report a version -- a class, an active
+			// plugin -- permanently unmet, since there was nothing to compare.
+			'minimum' => '',
 			'name'    => $known['name'] ?? $id,
 			'exists'  => $known['exists'] ?? null,
 			'current' => $known['current'] ?? null,
@@ -239,7 +242,7 @@ class Requirements {
 					'checked' => true,
 					'met'     => $result['exists'] && $this->minimum_version_met(
 							$result['version'],
-							$this->parse_property( $properties, 'minimum' )
+							(string) $this->parse_property( $properties, 'minimum' )
 						),
 					'exists'  => $result['exists'],
 				]
@@ -417,7 +420,16 @@ class Requirements {
 	 * @return bool
 	 */
 	private function minimum_version_met( $current, string $minimum ): bool {
-		if ( ! is_string( $current ) ) {
+		// Nothing was asked for, so presence is the whole requirement. This is
+		// the normal case for a 'class' or 'plugin_active' check, neither of
+		// which can report a version at all.
+		if ( '' === trim( $minimum ) ) {
+			return true;
+		}
+
+		// A version was asked for and none could be read. Reporting that as
+		// met would claim a check happened that did not.
+		if ( ! is_string( $current ) || '' === $current ) {
 			return false;
 		}
 
@@ -473,11 +485,23 @@ class Requirements {
 			);
 		}
 
+		$minimum = (string) $this->parse_property( $requirement, 'minimum' );
+
+		// Naming a minimum that was never asked for reads as though the
+		// dependency is the wrong version, when it is simply absent.
+		if ( '' === $minimum ) {
+			return sprintf(
+			/* translators: %s: requirement name */
+				__( '<strong>Missing %s</strong>', 'arraypress' ),
+				esc_html( $this->parse_property( $requirement, 'name' ) )
+			);
+		}
+
 		return sprintf(
 		/* translators: %1$s: requirement name, %2$s: minimum version */
 			__( '<strong>Missing %1$s</strong>: minimum required %2$s', 'arraypress' ),
 			esc_html( $this->parse_property( $requirement, 'name' ) ),
-			'<strong>' . esc_html( $this->parse_property( $requirement, 'minimum' ) ) . '</strong>'
+			'<strong>' . esc_html( $minimum ) . '</strong>'
 		);
 	}
 

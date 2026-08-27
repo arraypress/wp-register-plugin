@@ -63,7 +63,7 @@ if ( ! function_exists( 'register_edd_plugin' ) ) :
 			'priority'     => 99, // Load after EDD ExtensionLoader (priority 98)
 		];
 
-		$config = array_merge_recursive( $defaults, $config );
+		$config = Plugin::merge_config( $defaults, $config );
 		register_plugin( $file, $bootstrap, $config );
 	}
 endif;
@@ -95,7 +95,7 @@ if ( ! function_exists( 'register_woocommerce_plugin' ) ) :
 			'priority'     => 20, // Load after WooCommerce (which loads at priority 10)
 		];
 
-		$config = array_merge_recursive( $defaults, $config );
+		$config = Plugin::merge_config( $defaults, $config );
 		register_plugin( $file, $bootstrap, $config );
 	}
 endif;

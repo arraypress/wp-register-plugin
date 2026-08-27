@@ -944,6 +944,41 @@ class Plugin {
 	}
 
 	/**
+	 * Merge a caller's config over a preset's defaults.
+	 *
+	 * array_merge_recursive() cannot do this: given the same string key in
+	 * both arrays it keeps *both* values as a list, so a plugin asking for
+	 * PHP 8.3 over a default of 7.4 got [ '7.4', '8.3' ]. That is an array,
+	 * so add_requirement() stopped treating it as a version and left the
+	 * minimum empty -- the floor the plugin declared was never enforced.
+	 *
+	 * Scalars are overridden. Arrays one level down -- requirements,
+	 * setup_hooks -- are merged key by key so a caller can change one
+	 * requirement without restating the rest.
+	 *
+	 * @param array $defaults Preset defaults.
+	 * @param array $config   Caller configuration, which wins.
+	 *
+	 * @return array
+	 * @since 1.1.0
+	 */
+	public static function merge_config( array $defaults, array $config ): array {
+		foreach ( $defaults as $key => $value ) {
+			if ( ! array_key_exists( $key, $config ) ) {
+				$config[ $key ] = $value;
+
+				continue;
+			}
+
+			if ( is_array( $value ) && is_array( $config[ $key ] ) ) {
+				$config[ $key ] = array_merge( $value, $config[ $key ] );
+			}
+		}
+
+		return $config;
+	}
+
+	/**
 	 * Static method to register plugin from the configuration array.
 	 *
 	 * @param array $config Configuration array

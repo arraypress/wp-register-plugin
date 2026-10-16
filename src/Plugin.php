@@ -456,12 +456,21 @@ class Plugin {
 			}
 		};
 
-		// Check if before_woocommerce_init already fired
-		if ( did_action( 'before_woocommerce_init' ) ) {
-			// Run immediately if WooCommerce hook already fired
+		// WooCommerce accepts a declaration only from inside the
+		// before_woocommerce_init action: FeaturesController checks
+		// doing_action(), not did_action(), and answers anything else with a
+		// doing_it_wrong notice and a refusal. Calling it after the action had
+		// passed -- which is the normal case when a plugin is registered
+		// during activation, from WP-CLI or from the admin sandbox -- printed
+		// that notice into the activation request, and WordPress then refused
+		// to activate the plugin for having generated unexpected output.
+		//
+		// When the action has already run there is nothing useful to do in
+		// this request. The next one loads the plugin at plugins_loaded, well
+		// before the action, and declares normally.
+		if ( doing_action( 'before_woocommerce_init' ) ) {
 			$compatibility_callback();
-		} else {
-			// Otherwise wait for the hook
+		} elseif ( ! did_action( 'before_woocommerce_init' ) ) {
 			add_action( 'before_woocommerce_init', $compatibility_callback );
 		}
 	}
